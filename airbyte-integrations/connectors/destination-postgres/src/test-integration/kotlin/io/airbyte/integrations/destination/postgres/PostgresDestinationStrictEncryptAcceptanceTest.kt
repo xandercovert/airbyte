@@ -14,7 +14,6 @@ import org.junit.jupiter.api.Test
 
 @Disabled("Disabled after DV2 migration. Re-enable with fixtures updated to DV2.")
 class PostgresDestinationStrictEncryptAcceptanceTest : AbstractPostgresDestinationAcceptanceTest() {
-    private var testDb: PostgresTestDatabase? = null
     override var featureFlags =
         FeatureFlagsWrapper.overridingDeploymentMode(super.featureFlags, "CLOUD")
 
@@ -39,10 +38,6 @@ class PostgresDestinationStrictEncryptAcceptanceTest : AbstractPostgresDestinati
                     .build()
             )
             .build()
-    }
-
-    override fun getTestDb(): PostgresTestDatabase {
-        return testDb!!
     }
 
     @Throws(Exception::class)
