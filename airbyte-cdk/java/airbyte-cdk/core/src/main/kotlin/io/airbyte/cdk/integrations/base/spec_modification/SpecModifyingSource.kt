@@ -5,6 +5,7 @@ package io.airbyte.cdk.integrations.base.spec_modification
 
 import com.fasterxml.jackson.databind.JsonNode
 import io.airbyte.cdk.integrations.base.Source
+import io.airbyte.commons.features.FeatureFlags
 import io.airbyte.commons.util.AutoCloseableIterator
 import io.airbyte.protocol.models.v0.*
 
@@ -14,6 +15,7 @@ import io.airbyte.protocol.models.v0.*
  * want to allow users to send data unencrypted.
  */
 abstract class SpecModifyingSource(private val source: Source) : Source {
+    override var featureFlags: FeatureFlags = source.featureFlags
     @Throws(Exception::class)
     abstract fun modifySpec(originalSpec: ConnectorSpecification): ConnectorSpecification
 

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import io.airbyte.cdk.integrations.base.AirbyteMessageConsumer
 import io.airbyte.cdk.integrations.base.Destination
 import io.airbyte.cdk.integrations.base.SerializedAirbyteMessageConsumer
+import io.airbyte.commons.features.FeatureFlags
 import io.airbyte.protocol.models.v0.AirbyteConnectionStatus
 import io.airbyte.protocol.models.v0.AirbyteMessage
 import io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog
@@ -15,6 +16,7 @@ import java.util.function.Consumer
 
 abstract class SpecModifyingDestination(private val destination: Destination) : Destination {
     override val isV2Destination: Boolean = destination.isV2Destination
+    override var featureFlags: FeatureFlags = destination.featureFlags
 
     @Throws(Exception::class)
     abstract fun modifySpec(originalSpec: ConnectorSpecification): ConnectorSpecification

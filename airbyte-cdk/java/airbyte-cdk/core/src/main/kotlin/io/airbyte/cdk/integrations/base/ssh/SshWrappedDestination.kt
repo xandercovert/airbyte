@@ -10,6 +10,7 @@ import io.airbyte.cdk.integrations.base.AirbyteTraceMessageUtility
 import io.airbyte.cdk.integrations.base.Destination
 import io.airbyte.cdk.integrations.base.SerializedAirbyteMessageConsumer
 import io.airbyte.commons.concurrency.VoidCallable
+import io.airbyte.commons.features.FeatureFlags
 import io.airbyte.commons.json.Jsons
 import io.airbyte.commons.resources.MoreResources
 import io.airbyte.protocol.models.v0.AirbyteConnectionStatus
@@ -25,17 +26,19 @@ private val LOGGER = KotlinLogging.logger {}
  * Decorates a Destination with an SSH Tunnel using the standard configuration that Airbyte uses for
  * configuring SSH.
  */
-class SshWrappedDestination : Destination {
+open class SshWrappedDestination : Destination {
     private val delegate: Destination
     private val hostKey: List<String>?
     private val portKey: List<String>?
     private val endPointKey: String?
+    final override var featureFlags: FeatureFlags
 
     constructor(delegate: Destination, hostKey: List<String>, portKey: List<String>) {
         this.delegate = delegate
         this.hostKey = hostKey
         this.portKey = portKey
         this.endPointKey = null
+        this.featureFlags = delegate.featureFlags
     }
 
     constructor(delegate: Destination, endPointKey: String) {
@@ -43,6 +46,7 @@ class SshWrappedDestination : Destination {
         this.endPointKey = endPointKey
         this.portKey = null
         this.hostKey = null
+        this.featureFlags = delegate.featureFlags
     }
 
     @Throws(Exception::class)

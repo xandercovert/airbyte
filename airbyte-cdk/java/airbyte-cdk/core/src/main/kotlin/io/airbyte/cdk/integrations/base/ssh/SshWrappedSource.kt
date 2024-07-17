@@ -6,6 +6,7 @@ package io.airbyte.cdk.integrations.base.ssh
 import com.fasterxml.jackson.databind.JsonNode
 import io.airbyte.cdk.integrations.base.AirbyteTraceMessageUtility
 import io.airbyte.cdk.integrations.base.Source
+import io.airbyte.commons.features.FeatureFlags
 import io.airbyte.commons.util.AutoCloseableIterator
 import io.airbyte.commons.util.AutoCloseableIterators
 import io.airbyte.protocol.models.v0.*
@@ -19,12 +20,14 @@ class SshWrappedSource : Source {
     private val hostKey: List<String>
     private val portKey: List<String>
     private val sshGroup: Optional<String>
+    final override var featureFlags: FeatureFlags
 
     constructor(delegate: Source, hostKey: List<String>, portKey: List<String>) {
         this.delegate = delegate
         this.hostKey = hostKey
         this.portKey = portKey
         this.sshGroup = Optional.empty()
+        this.featureFlags = delegate.featureFlags
     }
 
     constructor(delegate: Source, hostKey: List<String>, portKey: List<String>, sshGroup: String) {
@@ -32,6 +35,7 @@ class SshWrappedSource : Source {
         this.hostKey = hostKey
         this.portKey = portKey
         this.sshGroup = Optional.of(sshGroup)
+        this.featureFlags = delegate.featureFlags
     }
 
     @Throws(Exception::class)
@@ -51,6 +55,10 @@ class SshWrappedSource : Source {
                 .withStatus(AirbyteConnectionStatus.Status.FAILED)
                 .withMessage(sshErrorMessage)
         }
+    }
+
+    override fun isCloudDeployment(): Boolean {
+        return delegate.isCloudDeployment()
     }
 
     @Throws(Exception::class)
