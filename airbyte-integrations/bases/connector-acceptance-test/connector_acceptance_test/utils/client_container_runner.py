@@ -27,6 +27,11 @@ async def _build_container(dagger_client: dagger.Client, dockerfile_path: Path) 
 
 async def _build_client_container(dagger_client: dagger.Client, connector_path: Path, dockerfile_path: Path) -> dagger.Container:
     container = await _build_container(dagger_client, dockerfile_path)
+    # return container.with_mounted_cache(
+    #     str(IN_CONTAINER_CONNECTOR_PATH),
+    #     dagger_client.cache_volume(connector_path.name),
+    #     sharing=dagger.CacheSharingMode.SHARED,
+    # )
     return container.with_mounted_directory(
         str(IN_CONTAINER_CONNECTOR_PATH), dagger_client.host().directory(str(connector_path), exclude=get_default_excluded_files())
     )
@@ -67,5 +72,8 @@ async def do_setup(container: dagger.Container, command: List[str], connector_co
     return container
 
 
-async def do_teardown(container: dagger.Container, command: List[str]):
-    return await _run(container, command)
+async def do_teardown(container: dagger.Container, command: List[str], connector_path: Path):
+    container = await _run(container, command)
+    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ", await container.stdout())
+    await container.directory(str(IN_CONTAINER_CONNECTOR_PATH)).export(str(connector_path), wipe=True)
+    return container

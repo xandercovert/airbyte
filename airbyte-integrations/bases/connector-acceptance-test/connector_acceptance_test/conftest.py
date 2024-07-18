@@ -233,10 +233,13 @@ async def setup_and_teardown(
         logging.info(f"Setup stdout: {await setup_teardown_container.stdout()}")
     yield None
     if client_container:
+        import ipdb;
+        ipdb.set_trace()
         logging.info("Running teardown")
         setup_teardown_container = await client_container_runner.do_teardown(
             client_container,
             client_container_config.teardown_command,
+            base_path,
         )
         logging.info(f"Teardown stdout: {await setup_teardown_container.stdout()}")
 

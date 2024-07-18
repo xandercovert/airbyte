@@ -18,12 +18,30 @@ acceptance_tests:
   basic_read:
     tests:
       - config_path: secrets/config.json
+        client_container_config:
+          client_container_dockerfile_path: integration_tests/Dockerfile.cat_setup_teardown
+          setup_command:
+            ["touch", "/connector/integration_tests/configured_catalog2.json"]
+          teardown_command:
+            [
+              "rm",
+              "/connector/integration_tests/configured_catalog2.json",
+            ]
         expect_records:
           path: integration_tests/expected_records.jsonl
   full_refresh:
     tests:
       - config_path: secrets/config.json
         configured_catalog_path: integration_tests/configured_catalog.json
+        client_container_config:
+          client_container_dockerfile_path: integration_tests/Dockerfile.cat_setup_teardown
+          setup_command:
+            ["touch", "/connector/integration_tests/configured_catalog2.json"]
+          teardown_command:
+            [
+              "rm",
+              "/connector/integration_tests/configured_catalog2.json",
+            ]
         ignored_fields:
           users:
             - name: updated_at
@@ -44,5 +62,25 @@ acceptance_tests:
     tests:
       - config_path: secrets/config.json
         configured_catalog_path: integration_tests/configured_catalog.json
+        client_container_config:
+          client_container_dockerfile_path: integration_tests/Dockerfile.cat_setup_teardown
+          setup_command:
+            [
+              "echo",
+              "{}",
+              ">>",
+              "/connector/integration_tests/abnormal_state2.json",
+            ]
+          teardown_command:
+            [
+              "rm",
+              "/connector/integration_tests/configured_catalog2.json",
+            ]
+          between_syncs_command:
+            [
+              "echo",
+              ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> running something!!!!!!!!",
+            ]
+
         future_state:
           future_state_path: integration_tests/abnormal_state.json
