@@ -767,6 +767,7 @@ E.G.: running Poe tasks on the modified internal packages of the current branch:
 
 | Version | PR                                                         | Description                                                                                                                  |
 |---------| ---------------------------------------------------------- |------------------------------------------------------------------------------------------------------------------------------|
+| 4.25.3  | [#42463](https://github.com/airbytehq/airbyte/pull/42463) | Add validation before live test runs                                                                                         |
 | 4.25.2  | [#42077](https://github.com/airbytehq/airbyte/pull/42077) | Live/regression tests: add status check for regression test runs                                                             |
 | 4.25.1  | [#42410](https://github.com/airbytehq/airbyte/pull/42410) | Live/regression tests: disable approval requirement on forks                                                                 |
 | 4.25.0  | [#42044](https://github.com/airbytehq/airbyte/pull/42044) | Live/regression tests: add support for selecting from a subset of connections                                                |
