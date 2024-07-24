@@ -17,6 +17,7 @@ import io.airbyte.protocol.models.AirbyteTraceMessage
 import io.airbyte.protocol.models.ConfiguredAirbyteCatalog
 import io.airbyte.protocol.models.StreamDescriptor
 import io.airbyte.protocol.models.v0.*
+import io.airbyte.workers.exception.TestHarnessException
 import io.airbyte.workers.internal.AirbyteDestination
 import io.airbyte.workers.internal.DefaultAirbyteDestination
 import io.airbyte.workers.process.AirbyteIntegrationLauncher
@@ -1025,6 +1026,153 @@ abstract class BaseTypingDedupingTest {
         assertFails(
             "Expected final table to not exist, but we were able to read records from it."
         ) { dumpFinalTableRecords(streamNamespace, streamName) }
+    }
+
+    @Test
+    open fun interruptedOverwriteWithPriorData() {
+        val catalog0 =
+            io.airbyte.protocol.models.v0
+                .ConfiguredAirbyteCatalog()
+                .withStreams(
+                    java.util.List.of(
+                        ConfiguredAirbyteStream()
+                            .withSyncId(42)
+                            .withGenerationId(41)
+                            .withMinimumGenerationId(41)
+                            .withSyncMode(SyncMode.FULL_REFRESH)
+                            .withCursorField(listOf("updated_at"))
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withStream(
+                                AirbyteStream()
+                                    .withNamespace(streamNamespace)
+                                    .withName(streamName)
+                                    .withJsonSchema(SCHEMA)
+                            )
+                    )
+                )
+        runSync(
+            catalog0,
+            readMessages("dat/sync1_messages.jsonl") + readMessages("dat/sync2_messages.jsonl")
+        )
+
+        val expectedRawRecords0 = readRecords("dat/sync2_expectedrecords_raw.jsonl")
+        val expectedFinalRecords0 =
+            readRecords("dat/sync2_expectedrecords_fullrefresh_append_final.jsonl")
+        verifySyncResult(expectedRawRecords0, expectedFinalRecords0, disableFinalTableComparison())
+
+        val catalog =
+            io.airbyte.protocol.models.v0
+                .ConfiguredAirbyteCatalog()
+                .withStreams(
+                    java.util.List.of(
+                        ConfiguredAirbyteStream()
+                            .withSyncId(42)
+                            // notice we changed the generationId and the minimumGenerationId
+                            .withGenerationId(43)
+                            .withMinimumGenerationId(43)
+                            .withSyncMode(SyncMode.FULL_REFRESH)
+                            .withCursorField(listOf("updated_at"))
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withStream(
+                                AirbyteStream()
+                                    .withNamespace(streamNamespace)
+                                    .withName(streamName)
+                                    .withJsonSchema(SCHEMA)
+                            )
+                    )
+                )
+
+        // First sync. We make it fail.
+        try {
+            runSync(catalog, readMessages("dat/sync1_messages.jsonl"), streamStatus = null)
+            fail("sync should have errored out!")
+        } catch (e: TestHarnessException) {}
+
+        // raw and final table should have been left alone as is
+        verifySyncResult(expectedRawRecords0, expectedFinalRecords0, disableFinalTableComparison())
+
+        // notice we re-write the same records we wrote earlier
+        runSync(catalog, readMessages("dat/sync1_messages.jsonl"))
+
+        val expectedRawRecords1 = readRecords("dat/sync1_expectedrecords_raw.jsonl")
+        val expectedFinalRecords1 = readRecords("dat/sync1_expectedrecords_nondedup_final.jsonl")
+        verifySyncResult(
+            expectedRawRecords1 + expectedRawRecords1,
+            expectedFinalRecords1 + expectedFinalRecords1,
+            disableFinalTableComparison()
+        )
+    }
+
+    @Test
+    @Throws(Exception::class)
+    open fun interruptedOverwriteWithoutPriorData() {
+        val catalog =
+            io.airbyte.protocol.models.v0
+                .ConfiguredAirbyteCatalog()
+                .withStreams(
+                    java.util.List.of(
+                        ConfiguredAirbyteStream()
+                            .withSyncId(42)
+                            .withGenerationId(43)
+                            .withMinimumGenerationId(43)
+                            .withSyncMode(SyncMode.FULL_REFRESH)
+                            .withCursorField(listOf("updated_at"))
+                            .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                            .withStream(
+                                AirbyteStream()
+                                    .withNamespace(streamNamespace)
+                                    .withName(streamName)
+                                    .withJsonSchema(SCHEMA)
+                            )
+                    )
+                )
+
+        // First sync
+        runSync(catalog, readMessages("dat/sync1_messages.jsonl"))
+
+        val expectedRawRecords1 = readRecords("dat/sync1_expectedrecords_raw.jsonl")
+        val expectedFinalRecords1 = readRecords("dat/sync1_expectedrecords_nondedup_final.jsonl")
+        verifySyncResult(expectedRawRecords1, expectedFinalRecords1, disableFinalTableComparison())
+
+        runSync(catalog, readMessages("dat/sync2_messages.jsonl"))
+
+        val expectedRawRecords2 = readRecords("dat/sync2_expectedrecords_raw.jsonl")
+        val expectedFinalRecords2 =
+            readRecords("dat/sync2_expectedrecords_fullrefresh_append_final.jsonl")
+        verifySyncResult(expectedRawRecords2, expectedFinalRecords2, disableFinalTableComparison())
+    }
+
+    open val manyStreamCount = 20
+
+    @Test
+    open fun testManyStreamsCompletion() {
+        var streams = mutableListOf<ConfiguredAirbyteStream>()
+        val messages = mutableListOf<AirbyteMessage>()
+        for (i in 0..manyStreamCount) {
+            val currentStreamName = streamName + "_" + i
+            streams.add(
+                ConfiguredAirbyteStream()
+                    .withSyncId(42)
+                    .withGenerationId(43)
+                    .withMinimumGenerationId(43)
+                    .withSyncMode(SyncMode.FULL_REFRESH)
+                    .withCursorField(listOf("updated_at"))
+                    .withDestinationSyncMode(DestinationSyncMode.OVERWRITE)
+                    .withStream(
+                        AirbyteStream()
+                            .withNamespace(streamNamespace)
+                            .withName(currentStreamName)
+                            .withJsonSchema(SCHEMA)
+                    )
+            )
+            messages.addAll(
+                readMessages("dat/sync1_messages.jsonl", streamNamespace, currentStreamName)
+            )
+        }
+        val catalog = io.airbyte.protocol.models.v0.ConfiguredAirbyteCatalog().withStreams(streams)
+
+        runSync(catalog, messages)
+        // we just make sure it completes
     }
 
     private fun <T> repeatList(n: Int, list: List<T>): List<T> {
